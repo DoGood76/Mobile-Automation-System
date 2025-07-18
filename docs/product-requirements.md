@@ -1,254 +1,92 @@
-# 📱 Mobile Automation Testing System – Product Requirements Document (PRD)
+# 🧪 Unified Test Trigger UI – PRD
+
+## TL;DR
+This PRD proposes a rich, flexible **Unified Test Trigger UI** for initiating mobile automation tests manually. Initially implemented in Jenkins, this interface will empower QA, developers, and team leads to define test scope, app versions, and execution environments — without needing CLI access or brittle scripting. This is the first official trigger in the automation ecosystem and lays the foundation for future trigger capabilities across Bitbucket, Xray, and APIs.
 
 ---
 
-## ✅ TL;DR
+## ❗ Problem Statement
 
-We're building a scalable, fault-tolerant Android test automation system that supports cross-project, multi-branch, and scheduled execution. It integrates with Bitbucket, Jenkins, Jira/Xray, and OpenSTF. Features include test orchestration, retry logic, logging, and Notification Channel & Alerting — empowering faster releases with higher confidence.
+Today, there is **no unified, reliable way** to trigger automated tests across teams. While several automation systems currently exist, many teams still rely entirely on manual testing. This fragmented landscape creates several critical problems:
 
----
+- ❌ No official or consistent method for triggering automation  
+- ❌ Teams risk building **siloed automation workflows**, each with their own tools, formats, and interfaces  
+- ❌ DevOps and QA must support multiple systems and inconsistent pipelines  
+- ❌ Difficult to manage shared compute resources (devices, runners, environments)  
+- ❌ No centralized visibility into test execution across projects  
 
-## 🔍 Problem Statement
-
-Our current mobile testing process relies heavily on **manual validation**, which is time-consuming, inconsistent, and difficult to scale. As product complexity and test coverage grow, manual efforts become a bottleneck — **slowing development** and reducing **confidence in release quality**.
-
-We lack a centralized and automated **test orchestration system** to manage, execute, and track tests across **multiple projects, branches, and environments**.
-
-### This leads to:
-
-- ❌ Inconsistent test quality
-- ❌ Limited visibility into test health and coverage
-- ❌ Delayed feedback loops for developers
-- ❌ High QA overhead
-- ❌ Fragmented tooling and workflows
-- ❌ Increased risk of regressions
-
-### ✅ We Need a Test Automation Solution That:
-
-- Supports multi-project, multi-branch, and scheduled test execution
-- Runs on real devices (OpenSTF) and AVD
-- Offloads repetitive manual QA work
-- Provides consistent test execution
-- Tracks flaky tests, retry stats, and trends
-- Integrates with Jenkins, Bitbucket, Jira/Xray, and Notification Channel
-- Improves delivery speed and developer confidence
-- **Is fully deployable on-premises and does not rely on external cloud services**
+This PRD introduces a **Unified Test Trigger UI** — implemented first via Jenkins — to establish a **standard interface and contract for executing mobile automation tests**. It’s the foundation for building a scalable, team-agnostic automation ecosystem.
 
 ---
 
-## 🌟 Goals
+## 🎯 Goals
 
-### ✅ Business Goals
-
-- Reduce QA cycle time by 50%
-- Cover 80%+ of regression tests via automation
-- Reduce post-release bugs by 40%
-- Improve developer velocity and merge confidence
-
-### 👥 User Goals
-
-- QA can trigger and view test results from Xray
-- Developers get pass/fail feedback within 10 min
-- Scheduled tests run nightly without manual effort
-- All test data is centralized and traceable
-
-### 📈 Success Metrics & KPIs
-
-| KPI                              | Target / Goal                    | Purpose                                          |
-| -------------------------------- | -------------------------------- | ------------------------------------------------ |
-| 🔁 Avg. PR validation time       | ≤ 10 minutes                     | Shows speed of feedback from automation          |
-| 📥 Time from commit to merge     | Reduced by 30–50%                | Indicates faster delivery cycles                 |
-| ✅ % of PRs auto-approved         | ≥ 70% post automation            | Reflects trust in automated quality gates        |
-| 🚫 Code review rejection rate    | Reduced by 25%                   | Indicates early bug detection by automated tests |
-| 🚀 Deploy frequency (pre/post)   | Increased after test infra setup | More confidence leads to more frequent releases  |
-| 🛠️ Manual QA effort per release | Reduced by ≥ 50%                 | Demonstrates resource efficiency                 |
-| 🔍 Time to detect regression     | Reduced by ≥ 50%                 | Catches bugs before merge or release             |
-| 📊 Test-to-code ratio trend      | Rising trend (coverage growth)   | Encourages better test culture                   |
-
-### ❌ Non-Goals
-
-- iOS support
-- Cloud device farms (local STF only)
-
+- Enable manual triggering of test runs through a user-friendly UI  
+- Provide a clean, flexible interface for test scope, version, and device selection  
+- Support validation and simulation of test plans before execution  
+- Integrate cleanly with the underlying test orchestration backend  
+- Lay the foundation for a unified, multi-trigger test execution architecture
 
 ---
 
-## 🧑‍💻 User Stories
+## 👥 Target Users
 
-- As a QA engineer, I want to trigger regression tests from Xray and view results in Xray test Cycle.
-- As a developer, I want pull requests tests to run automatically and notify me on failure prior of being review by co-worker.
-- As a team lead, I want to monitor test coverage per project or feature, so I can ensure critical areas are not missed.
-- As a team lead, I want to track flaky tests and retry stats over time.
-- As a release manager, I want to cancel test runs to prioritize hotfix validation.
-- As a product manager, I want to know which tests failed before a release, so I can assess risk and make informed decisions.
+- QA Engineers  
+- Developers  
+- Team Leads  
+- Release Engineers
 
 ---
 
-## 🔧 Functional Requirements
+## ✨ User Flow
 
-### 🦢 Test Execution
+Example:
 
-- Trigger tests via CLI, Xray, Bitbucket PR, or cron
-- Select tests by tag, suite, project, branch, or Jira/Xray test ID
-- Run on physical and virtual Android devices
-- Support parallel execution
-- Cancel/pause/resume in-flight runs
-- Support retry of failed tests with configurable logic
-
-
-### 📊 Test Reporting
-
-- Real-time status of running jobs
-- Allure-compatible visual reporting
-- Logs, screenshots, stack traces
-- Sync results with Jira/Xray test plans
-- Push alerts (failures, flaky tests) via Notification Channel or webhook based on thresholds
-- Export all test execution logs and metrics to ELK stack
-- Kibana dashboards allow users to:
-    - Filter test results by branch, commit, test suite, retry count, and environment
-    - Visualize flaky tests and retry trends over time
-    - Investigate individual test logs, stack traces, and failures
-- All logs and metrics include structured fields (e.g., `test_id`, `run_id`, `retry`, `commit_hash`) for 
-
-### ⏰ Scheduling & Queuing
-
-- Nightly test plans via cron
-- Priority queue with retry logic
-- Concurrency limits based on available devices
-
-### 🔐 Access Control
-
-- Role-based permissions (Dev, QA, Admin)
-- Action audit logs (who triggered what)
+1. Open UI  
+2. Select test tags: `@smoke` + `@login`  
+3. Select source: `release/v1.2.4`  
+4. Choose devices: Samsung + Pixel with Android 13+  
+5. Dry run simulation  
+6. Click "Trigger Job"
 
 ---
 
-## ⚙️ Non-Functional Requirements
+## 🧩 Core Functional Sections
 
-### 🧩 Scalability
+### 📦 1. Source / Version Under Test
 
-- Support hundreds of tests concurrently
-- Use Docker/K8s for container execution
-- Executor agents must scale based on available physical/virtual devices (STF/AVD)
-
-### 💥 Fault Tolerance
-
-- Detect and recover from executor crashes
-- Retry failed tests due to infra instability
-- Maintain test state in orchestrator
-- Include watchdog monitoring for unresponsive containers and auto-recovery
-
-### 🔐 Security
-
-- Encrypted storage for logs/results
-- Secure access to code/devices
-- Each test execution must run in an isolated container to prevent test data leakage
-
-### ⚡ Performance
-
-- Test trigger-to-start time < 30 sec
-- PR test results within 10 min
-- Retry delay: 45 seconds
-
-### ⚒️ Maintainability
-
-- Plugin architecture for tools
-- Minimal manual ops required
-- All services must produce traceable structured logs
-
-### ☁️ Deployment
-
-- **On-premises deployment required** (Kubernetes-based)
-- **Must not depend on cloud-based services or SaaS tools**
+**Purpose:** Define where the application under test comes from. The user selects one of the following options:
 
 ---
 
-## 💥 Fault Tolerance & Crash Recovery
+#### 🔘 Option 1: Build from Git Branch
 
-### Crash Detection & Retry
+**Purpose:** Daily use for feature and CI flows.
 
-- Detect crashes using liveness and readiness probes
-- Mark test as crashed and log error details
-- Automatically re-queue crashed test for retry based on policy
+- **User Input:** Dropdown list of branches (`main`, `develop`, `release/x.y.z`, `feature/1234-2FA`)
+- **Behavior:**
+  - Jenkins clones repo, builds artifacts (APK, JAR, AAR, etc.)
+  - Uploads to Artifactory
+  - Validates that upload succeeded
+  - Does **not** download artifacts — instead, generates JSON with:
+    - branch
+    - artifact path
+    - optionally: file names
 
-### Stateful Tracking
+- **Failure:** If branch doesn't exist or build/upload fails → job terminates.
 
-- Maintain test state within the Execution Coordinator
-- Ensure test resumption after partial failure
-- Maintain unique run IDs to correlate retries with original executions
-
-### Resilient Logging
-
-- Use sidecar or stream-based logging to ensure no log loss
-- Logs are shipped immediately to ELK
-- Each log entry tagged with run ID and retry metadata
-
-### Watchdog Monitoring
-
-- Periodically probe executor health and responsiveness
-- Automatically kill and reschedule jobs stuck in unresponsive containers
-- Alert via Notifier Service on repeated watchdog triggers
-
----
-
-## ⟳ Retry Policy
-
-| Failure Condition      | Retry? | Notes                           |
-| ---------------------- | ------ | ------------------------------- |
-| Device disconnect      | ✅      | Infra-related                   |
-| Timeout during setup   | ✅      | Infra slowness or crash         |
-| App install failure    | ✅      | Device-specific issue           |
-| Container crash        | ✅      | System failure                  |
-| Test assertion failure | ❌      | Product bug — not retried       |
-| Flaky test (tagged)    | ✅      | Allow up to 3 retries if tagged |
-
-### Defaults
-
-- Max retries: `1` (or `3` for `@flaky`)
-- Retry delay: `45s`
-- Clean environment between retries
-- Retry data reported and logged
-
----
-
-## 📊 Retry Metrics
-
-| Metric                                   | Description                                     |
-| ---------------------------------------- | ----------------------------------------------- |
-| retry\_rate\_overall                     | % of tests that retried at least once           |
-| avg\_retries\_per\_test                  | Includes 0-retry tests in average               |
-| flaky\_test\_count                       | Tests that passed only after retry              |
-| infra\_failure\_retries                  | Retries triggered by infra (e.g., crash/device) |
-| retry\_success\_rate                     | % of retries that passed                        |
-| max\_retry\_depth\_reached               | Tests that failed after max retry               |
-| added\_execution\_time\_due\_to\_retries | Total time cost of retries                      |
-
----
-
-## 🔔 Notification Channel & Alerting
-
-The system must support flexible integration with messaging platforms (e.g., Slack) to deliver real-time alerts and status notifications for a wide range of events.
-
-### Notification Types
-
-- **Infrastructure Issues**: Alert on executor crashes, device unavailability, or long queue delays
-- **Flaky Test Warnings**: Highlight repeated flaky test patterns
-- **TBD**
-
-
-
-## 🧭 Monitoring & Debugging
-
-### 🧑‍💼 User Experience Flow
-
-This section describes how users interact with the system through integrations and observability tools.
-
-#### 1. Triggering a Test
-
-- **Option A: Commit Annotation Trigger**
-
-  - Developer pushes a commit with annotations like `@automation @regression @TEST-1234`
-  - A version control hook detects the annotations, parses them, and triggers the test run
+**JSON Example:**
+```json
+{
+  "source": {
+    "type": "build_from_branch",
+    "git_branch": "release/v1.2.4",
+    "commit": "HEAD",
+    "artifact_path": "artifactory/releases/calendar-v1.2.4/",
+    "artifacts": ["calendar.apk", "test-lib.jar"]
+  }
+}
+```
 
 - **Option B: Jenkins Pipeline Trigger**
 
