@@ -25,7 +25,7 @@ If we don’t standardize now, we risk:
 ## ✅ What It Enables
 
 - QA, developers, and leads can run targeted test suites via UI
-- Consistent selection of app version, device groups, and test scope
+- Consistent selection of app version, device roles, and test scope
 - Dry-run preview of test/device matrix before execution
 - Clean JSON contract for backend execution — decouples UI from Jenkins
 
@@ -331,7 +331,7 @@ Defines the origin of the test definitions to be executed.
 ### ✅ Jenkins UX
 
 <p align="center">
-  <img src="./images/jenkins-branch-artifacts-selection.png" alt="UI mockup" width="400" />
+  <img src="./images/jenkins-test-source-selection.png" alt="UI mockup" width="400" />
 </p>
 ---
 
@@ -366,60 +366,196 @@ Defines the origin of the test definitions to be executed.
 ---
 ### 3. Test Selection
 
-Select the specific tests to execute from the defined sources.
+Select the specific tests to execute from the defined sources. Users can mix and match selection methods unless a Tag Expression is used, which overrides all others.
 
-* **Multi-select predefined test groups** (e.g., `@sanity`, `@regression`, `@smoke`)
+---
 
-  * **Purpose:** Run common sets of tests by category
+#### 🔹 Multi-select Predefined Test Groups
 
-* **Free-text input for specific tags or test IDs** (e.g., `@login`, `xray-123`)
+**Purpose:**  
+Run common sets of tests by category (e.g., regression, sanity).
 
-  * **Purpose:** Target precise test scopes for debug or retests
+**User Input:**  
+Checkbox/multi-select dropdown (e.g., `@sanity`, `@regression`, `@smoke`)
 
-* **Tag expressions** (e.g., `(@checkout or @login) and not @slow`)
+**Behavior:**  
+Resolves to associated tags and includes them in the test selection set.
 
-  * **Purpose:** Logical selection of tests by condition
+**JSON Output:**
+```json
+{
+  "test_groups": ["@sanity", "@smoke"]
+}
+```
 
-* **Exclusion tags** (e.g., `not @unstable`)
+#### 🔹 Free-text Input for Tags or Test IDs
 
-  * **Purpose:** Filter out flaky or long-running tests
+**Purpose:**  
+Target specific test scopes such as login flows or specific Jira cases.
 
-* **Toggle: Dry run**
+**User Input:**  
+Free-text field (e.g., `@login`, `xray-123`, `@2FA`)
 
-  * **Purpose:** Preview test-device matrix before execution by triggering simulation API call
+**Behavior:**  
+Parsed into individual tag references for inclusion.
 
-* **Output preview**
+**JSON Output:**
+```json
+{
+  "test_tags": ["@login", "xray-123", "@2FA"]
+}
+```
 
-  * **Purpose:** Shows number of matching tests and affected devices after Dry Run
+#### 🔹 Tag Expression
 
-##### ⚙️ Selection Logic Priority
+**Purpose:**  
+Use boolean logic to define complex test targeting rules.
 
-1. **Tag Expression** (if provided) overrides all other selection inputs
-2. If no expression is provided:
+**User Input:**  
+Expression field (e.g., `(@checkout or @login) and not @slow`)
 
-   * Union of selected **test groups** and **free-text tags/IDs**
-   * Then apply **exclusion tags** to filter final test set
+**Behavior:**  
+If provided, this input **overrides all other test selection methods** — including predefined groups, tags, and exclusions. The tag expression becomes the sole selector.
 
-> ⚠️ UI should clearly warn when Tag Expression is overriding all other selections
+**JSON Output:**
+```json
+{
+  "tag_expression": "(@checkout or @login) and not @slow"
+}
+```
 
-**Example Behavior:**
+#### 🔹 Exclusion Tags
 
-* Selected: `@sanity`, `@smoke` + `@login`, `xray-123`
-* Tag Expression: `(@checkout or @login) and not @slow`
-* ✅ Final Selection: Only tests matching tag expression
+**Purpose:**  
+Filter out unwanted tests such as flaky or unstable ones.
+
+**User Input:**  
+Free-text field (e.g., `@unstable`, `@flaky`)
+
+**Behavior:**  
+Removes any matching tags from the test set after positive selections have been made.  
+Ignored if a Tag Expression is provided (which takes full control).
+
+**JSON Output:**
+```json
+{
+  "exclude_tags": ["@unstable", "@flaky"]
+}
+```
+---
+
+### ⚙️ Selection Logic Priority
+
+1. If a **Tag Expression** is provided → it **overrides all other test selection inputs**.
+2. If no Tag Expression is provided:
+   - Combine:
+     - Predefined test groups (`test_groups`)
+     - Free-text tags or test IDs (`test_tags`)
+   - Then apply `exclude_tags` to filter out unwanted tests
+
+> ⚠️ UI should clearly alert: “Tag Expression overrides all other selection inputs.”
+
+---
+
+#### 🧪 Example Combined Payload
+
+```json
+{
+  "simulate": true,
+  "test_selection": {
+    "test_groups": ["@sanity", "@smoke"],
+    "test_tags": ["@login", "xray-123"],
+    "exclude_tags": ["@unstable"]
+  }
+}
+```
+---
+### ✅ Jenkins UX
+
+<p align="center">
+  <img src="./images/jenkins-test-selection.png" alt="UI mockup" width="400" />
+</p>
 
 ---
 
 ### 4. Device Selection
 
-* Create device groups (executed in parallel):
+Define what types of devices are needed to run the test.  
+Each **Device Role** represents one required device in the execution matrix (e.g., `primary`, `receiver`, `peer`, etc.).
 
-  * Filter by device brand or model (`Samsung`, `Pixel 6`, `Xiaomi`)
-  * Filter by OS version (`13`, `14`, `15`)
-  * Filter by capability (`Camera`, `Biometric`, `NFC`, `5G`)
-* Option to add/remove multiple device groups
-* Label and save device group presets
+Most tests require only a single role. More complex tests (like peer-to-peer, multi-user chat, etc.) may define multiple roles.
 
+---
+#### 🔹 Device Role Definition
+
+Each Device Role contains one filter group:
+
+| **Field**       | **Description**                                                                 |
+|------------------|---------------------------------------------------------------------------------|
+| **Role Name**    | A user-defined identifier (e.g., `primary`, `receiver`, `peer`)                |
+| **Models**       | Optional list. e.g., `Pixel 7`, `Samsung S21`                                  |
+| **OS Versions**  | Optional list. e.g., `13`, `14`, `15`                                           |
+| **Capabilities** | Optional list. e.g., `Camera`, `Biometric`, `NFC`, `5G`                         |
+| **Labels**       | Optional. Org/project-specific metadata (e.g., `project:calendar`, `EU`)        |
+
+---
+
+#### 🛠️ Behavior
+
+- All matching devices **within a role** must share the same capabilities  
+- Devices **across different roles** can differ — each is matched independently  
+- UI starts with a default single role (`primary`)  
+- Users can click “➕ Add Device Role” to define multiple roles  
+- Each role is shown in a separate card with a live preview of matching devices  
+
+---
+
+#### ✅ JSON Payload Example
+
+```json
+"device_roles": {
+  "primary": {
+    "models": ["Pixel 7"],
+    "os_versions": ["13"],
+    "capabilities": ["Camera"],
+    "labels": ["project:calendar"]
+  },
+  "peer": {
+    "models": ["Samsung Galaxy S21"],
+    "os_versions": ["13", "14"],
+    "capabilities": ["Camera", "Biometric"],
+    "labels": ["region:EU"]
+  }
+}
+```
+
+---
+
+### 🎯 JSON Summary by Execution Mode
+
+| Mode                           | Device Roles in JSON                                    | Execution Matrix Impact                                                         |
+| ------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Single-role tests (primary)    | `device_roles: { "primary": { ... } }`                  | `#tests × #primary devices`                                                     |
+| Multi-role tests (primary + X) | `device_roles: { "primary": { ... }, "peer": { ... } }` | `#tests × #primary devices × #peer devices`                                     |
+| Dry Run Mode                   | `simulate: true` included in root JSON                  | Server simulates all possible combinations, warns if any role has 0 matches     |
+| Execution Mode (real run)      | `simulate: false` (or omitted)                          | Server allocates devices and executes based on matrix, skipping unmatched roles |
+
+
+---
+
+#### ⚠️ UI Considerations
+
+- Each Device Role is **collapsible** for clarity  
+- **"No match" warning** shown during Dry Run if any role has 0 available devices  
+- **Label filters** are applied only if present in device metadata  
+- Users can **save role configurations as reusable presets** per team/project
+
+
+### ✅ Jenkins UX
+
+<p align="center">
+  <img src="./images/jenkins-devices-selection.png" alt="UI mockup" width="400" />
+</p>
 ---
 
 ### 5. Execution Options (Global)
@@ -428,8 +564,126 @@ Select the specific tests to execute from the defined sources.
 * Retry failed tests: Toggle + Count
 * Toggle: Fail Fast
 * Timeout (in minutes)
-* Toggle: Dry Run only (no execution, just validation)
 * Toggle + Field: Save configuration as reusable preset
+
+> 🔁 **Note:** Dry Run configuration is now handled in [Section 6 – Dry Run & Output Preview](#6-dry-run--output-preview).
+
+
+---
+
+## 6. 🧪 Dry Run & Output Preview
+
+The **Dry Run** capability allows users to simulate a test run before triggering actual execution. This ensures selected tests and device filters result in a meaningful, executable matrix — reducing waste, errors, and frustration.
+
+### 🔹 Dry Run Toggle
+
+**Purpose:**  
+Simulate the test/device matrix before actual execution.
+
+**User Input:**  
+- Checkbox toggle labeled: `🧪 Dry Run (simulate only, no tests will be run)`
+
+**Behavior:**  
+- Sends a request to the `/simulate` endpoint on the backend (Test Planner).
+- Simulation evaluates current selections:
+  - Source artifacts  
+  - Test definitions  
+  - Tags and test scope  
+  - Device roles and capabilities  
+
+**Backend Contract – JSON Output:**
+```json
+{
+  "simulate": true
+}
+```
+---
+### 🛠️ UX Notes
+
+- ✅ **Simulation is automatic** when the form is valid and Dry Run is selected.
+- 🚨 **Dry run mode is clearly labeled** in the job summary (confirmation screen).
+- ↪️ If Dry Run is selected, the primary action becomes **“Preview Simulation”** instead of “Trigger Job”.
+- 📦 **Dry Run is stateless** — it does not:
+  - Trigger builds
+  - Reserve devices
+  - Create/persist jobs
+---
+### 🔎 Output Preview Panel
+
+**Purpose:**  
+Provide users with a clear and immediate summary of what their test run would look like — before actually running it.
+
+**Behavior:**  
+- Appears only after a successful Dry Run (`/simulate` call)
+- Dynamically renders the simulation result, including:
+
+  - ✅ **Total matching test cases**
+  - 📱 **Selected device roles**
+  - 🧪 **Execution matrix** (tests × devices)
+  - ⚠️ **Warnings** if:
+    - No tests matched
+    - No available devices
+    - Tags not found or excluded
+
+**Example UI Output (simulated):**
+```yaml
+✅ 12 tests matched  
+📱 Devices: Samsung Galaxy S21, Pixel 7, Xiaomi Mi 11  
+🧪 Execution matrix: 12 tests × 2 primary devices × 3 peer devices = 72 executions  
+⚠️ 1 tag was unmatched: @nonexistent-tag
+```
+---
+### 🧪 Example Combined Simulation Payload
+
+**Payload sent to `/simulate` to generate the Output Preview Panel:**
+
+```json
+{
+  "simulate": true,
+  "test_selection": {
+    "test_groups": ["@sanity", "@smoke"],
+    "test_tags": ["@login", "xray-123"],
+    "exclude_tags": ["@unstable"]
+  },
+  "device_roles": {
+    "primary": {
+      "models": ["Pixel 7"],
+      "os_versions": ["13"],
+      "capabilities": ["Camera"]
+    },
+    "peer": {
+      "models": ["Samsung Galaxy S21"],
+      "os_versions": ["13", "14"],
+      "capabilities": ["Biometric"]
+    }
+  },
+  "source": {
+    "type": "build_from_branch",
+    "git_branch": "release/v1.2.4",
+    "artifact_path": "artifactory/releases/calendar-v1.2.4/",
+    "artifacts": ["calendar.apk", "test-lib.jar"]
+  }
+}
+```
+---
+### ⚠️ UI Considerations – Dry Run & Simulation
+
+- ❗ **No Matching Tests**  
+  If no tests match the current filters, the **Preview Panel** should display with a **red border** and a clear CTA:  
+  _“No tests matched your filters. Please adjust tags or groups.”_
+
+- ⚠️ **Partial Match Warnings**  
+  If some test cases are unavailable on selected devices or are filtered out, show a **non-blocking warning**.  
+  These should **not prevent execution**, but should help the user optimize their selections.
+
+- 🧼 **Dry Run Must Be Stateless and Lightweight**
+
+  - ❌ No test jobs are triggered  
+  - ❌ No devices are reserved  
+  - ❌ No artifacts are downloaded or installed  
+
+  The simulation process must **not consume infrastructure resources** and should return results near-instantly.
+
 
 ---
 
@@ -492,8 +746,11 @@ This UI and interaction model defines the **canonical contract** for future trig
 
 * [ ] Users can select test scope using tags and groups
 * [ ] Users can define the app source using Git, Artifactory, or skip
-* [ ] Device groups can be created and filtered
+* [ ] Device roles can be created and filtered
 * [ ] Global execution options are configurable
-* [ ] Dry run returns valid preview of test/device matrix
 * [ ] JSON is always sent to Trigger Listener on successful job start
 * [ ] Errors are handled clearly (missing branches, missing APKs, no test match)
+* [ ] Dry run toggle in UI triggers simulation and returns accurate preview panel
+* [ ] Dry run returns valid preview of test/device matrix
+
+
