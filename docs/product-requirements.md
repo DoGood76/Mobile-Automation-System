@@ -1,185 +1,221 @@
-# 🧪 Mobile-Automation-System – PRD
-
-## TL;DR
-This PRD proposes a rich, flexible **Unified Test Trigger UI** for initiating mobile automation tests manually. Initially implemented in Jenkins, this interface will empower QA, developers, and team leads to define test scope, app versions, and execution environments — without needing CLI access or brittle scripting. This is the first official trigger in the automation ecosystem and lays the foundation for future trigger capabilities across Bitbucket, Xray, and APIs.
+# 📱 Mobile Automation Testing System – Product Requirements Document (PRD)
 
 ---
 
-## ❗ Problem Statement
+## ✅ TL;DR
 
-Today, there is **no unified, reliable way** to trigger automated tests across teams. While several automation systems currently exist, many teams still rely entirely on manual testing. This fragmented landscape creates several critical problems:
-
-- ❌ No official or consistent method for triggering automation  
-- ❌ Teams risk building **siloed automation workflows**, each with their own tools, formats, and interfaces  
-- ❌ DevOps and QA must support multiple systems and inconsistent pipelines  
-- ❌ Difficult to manage shared compute resources (devices, runners, environments)  
-- ❌ No centralized visibility into test execution across projects  
-
-This PRD introduces a **Unified Test Trigger UI** — implemented first via Jenkins — to establish a **standard interface and contract for executing mobile automation tests**. It’s the foundation for building a scalable, team-agnostic automation ecosystem.
+We're building a scalable, fault-tolerant Android test automation system that supports cross-project, multi-branch, and scheduled execution. It integrates with Bitbucket, Jenkins, Jira/Xray, and OpenSTF. Features include test orchestration, retry logic, logging, and Slack-based alerting — empowering faster releases with higher confidence.
 
 ---
 
-## 🎯 Goals
+## 🔍 Problem Statement
 
-- Enable manual triggering of test runs through a user-friendly UI  
-- Provide a clean, flexible interface for test scope, version, and device selection  
-- Support validation and simulation of test plans before execution  
-- Integrate cleanly with the underlying test orchestration backend  
-- Lay the foundation for a unified, multi-trigger test execution architecture
+Our current mobile testing process relies heavily on **manual validation**, which is time-consuming, inconsistent, and difficult to scale. As product complexity and test coverage grow, manual efforts become a bottleneck — **slowing development** and reducing **confidence in release quality**.
 
----
+We lack a centralized and automated **test orchestration system** to manage, execute, and track tests across **multiple projects, branches, and environments**.
 
-## 👥 Target Users
+### This leads to:
 
-- QA Engineers  
-- Developers  
-- Team Leads  
-- Release Engineers
+- ❌ Inconsistent test quality
+- ❌ Limited visibility into test health and coverage
+- ❌ Delayed feedback loops for developers
+- ❌ High QA overhead
+- ❌ Fragmented tooling and workflows
+- ❌ Increased risk of regressions
 
----
+### ✅ We Need a Test Automation Solution That:
 
-## ✨ User Flow
-
-Example:
-
-1. Open UI  
-2. Select test tags: `@smoke` + `@login`  
-3. Select source: `release/v1.2.4`  
-4. Choose devices: Samsung + Pixel with Android 13+  
-5. Dry run simulation  
-6. Click "Trigger Job"
+- Supports multi-project, multi-branch, and scheduled test execution
+- Runs on real devices (OpenSTF + AVD)
+- Offloads repetitive manual QA work
+- Provides consistent test execution
+- Tracks flaky tests, retry stats, and trends
+- Integrates with Jenkins, Bitbucket, Jira/Xray, and Slack
+- Improves delivery speed and developer confidence
+- **Is fully deployable on-premises and does not rely on external cloud services**
 
 ---
 
-## 🧩 Core Functional Sections
+## 🌟 Goals
 
-### 📦 1. Source / Version Under Test
+### ✅ Business Goals
 
-**Purpose:** Define where the application under test comes from. The user selects one of the following options:
+- Reduce QA cycle time by 50%
+- Cover 80%+ of regression tests via automation
+- Reduce post-release bugs by 40%
+- Improve developer velocity and merge confidence
+
+### 👥 User Goals
+
+- QA can trigger and view test results from Xray
+- Developers get pass/fail feedback within 10 min
+- Scheduled tests run nightly without manual effort
+- All test data is centralized and traceable
+
+### 📈 Success Metrics & KPIs
+
+| KPI                             | Target / Goal                    | Purpose                                          |
+| ------------------------------- | -------------------------------- | ------------------------------------------------ |
+| 🖁 Avg. PR validation time      | ≤ 10 minutes                     | Shows speed of feedback from automation          |
+| 🗅️ Time from commit to merge   | Reduced by 30–50%                | Indicates faster delivery cycles                 |
+| ✅ % of PRs auto-approved        | ≥ 70% post automation            | Reflects trust in automated quality gates        |
+| ❌ Code review rejection rate    | Reduced by 25%                   | Indicates early bug detection by automated tests |
+| 🚀 Deploy frequency (pre/post)  | Increased after test infra setup | More confidence leads to more frequent releases  |
+| 🛠️ Manual QA effort per release | Reduced by ≥ 50%                 | Demonstrates resource efficiency                 |
+| 🔍 Time to detect regression    | Reduced by ≥ 50%                 | Catches bugs before merge or release             |
+| 📊 Test-to-code ratio trend     | Rising trend (coverage growth)   | Encourages better test culture                   |
+
+### ❌ Non-Goals
+
+- iOS support
+- Cloud device farms (local STF only)
+- Replacing test frameworks (pytest/behave stay)
+- Providing hosted SaaS solution
+- Managing test cases manually through UI
+
+---
+
+## 🧑‍💻 User Stories
+
+- As a QA engineer, I want to trigger regression tests from Xray and view results in Slack.
+- As a developer, I want PR tests to run automatically and notify me on failure.
+- As a developer, I want retry info and flaky test tracking available in commit or PR context.
+- As a product owner, I want to ensure regressions are caught before release.
+- As a team lead, I want to track flaky tests and retry stats over time.
+- As a team lead, I want a dashboard to review overall test stability per project.
+- As a release manager, I want to cancel test runs to prioritize hotfix validation.
 
 ---
 
-#### 🔘 Option 1: Build from Git Branch
+## 🔧 Functional Requirements
 
-**Purpose:** Daily use for feature and CI flows.
+### 🥚 Test Execution
 
-- **User Input:** Dropdown list of branches (`main`, `develop`, `release/x.y.z`, `feature/1234-2FA`)
-- **Behavior:**
-  - Jenkins clones repo, builds artifacts (APK, JAR, AAR, etc.)
-  - Uploads to Artifactory
-  - Validates that upload succeeded
-  - Does **not** download artifacts — instead, generates JSON with:
-    - branch
-    - artifact path
-    - optionally: file names
+- Trigger tests via CLI, Xray, Bitbucket PR, or cron
+- Select tests by tag, suite, project, branch, or Jira/Xray test ID
+- Run on physical and virtual Android devices
+- Support parallel execution
+- Cancel/pause/resume in-flight runs
+- Support retry of failed tests with configurable logic
+- Include retry metadata in result payload
 
-- **Failure:** If branch doesn't exist or build/upload fails → job terminates.
+### 📊 Test Reporting
 
-**JSON Example:**
-```json
-{
-  "source": {
-    "type": "build_from_branch",
-    "git_branch": "release/v1.2.4",
-    "commit": "HEAD",
-    "artifact_path": "artifactory/releases/calendar-v1.2.4/",
-    "artifacts": ["calendar.apk", "test-lib.jar"]
-  }
-}
-```
+- Real-time status of running jobs
+- Allure-compatible visual reporting
+- Logs, screenshots, stack traces
+- Sync results with Jira/Xray test plans
+- Push alerts (failures, flaky tests) via Notification Channel (e.g., Slack, email, webhook) based on thresholds
+- Export all test execution logs and metrics to ELK stack (e.g., via Filebeat or OpenTelemetry)
+- **Kibana dashboards** allow users to:
+  - Filter test results by branch, commit, test suite, retry count, and environment
+  - Visualize flaky tests and retry trends over time
+  - Investigate individual test logs, stack traces, and failures
+- All logs and metrics include structured fields (e.g., `test_id`, `run_id`, `retry`, `commit_hash`) for traceability and analysis
 
-- **Option 2: Jenkins Pipeline Trigger**
+### ⏰ Scheduling & Queuing
 
-  - User triggers the test manually through a Jenkins job (UI button or API call)
-  - Parameters include test suite, branch, tags, and environment
+- Nightly test plans via cron
+- Priority queue with retry logic
+- Concurrency limits based on devices
 
-- **Option 3: Xray-Driven Trigger**
+### 🔐 Access Control
 
-  - From Jira/Xray, user clicks a "Run Automated Test" button
-  - Test plan is used to trigger execution via API
-
-- **Option 4: Scheduled Cron Trigger**
-
-  - Tests are executed automatically based on nightly or scheduled cron jobs
-
-#### 2. Cancel or Retry a Test Run
-
-- Users can cancel an active test run via Jenkins
-- Retrying a test is possible through:
-  - Rerun button in Jenkins
-  - Xray test execution rerun
-  - Re-pushing annotated commit
-
-#### 3. Viewing and Investigating Results
-
-- Logs and telemetry data are stored and visualized via **ELK (Kibana)**
-- Results include:
-  - Logs, stack traces, and retry history
-  - Test metadata (PR number, commit, environment)
-  - Traces and metrics via **OpenTelemetry/APM standards**
-- Users filter and explore test execution data in Kibana dashboards
-
-### 📊 ELK Observability
-
-All logs and test execution metrics are exported to the ELK stack using **OpenTelemetry** or APM-compatible standards.
-
-- **Kibana** is used for:
-
-  - Viewing real-time and historical test logs
-  - Investigating flaky failures or environment issues
-  - Filtering by test, run ID, environment, branch, or commit
-
-- **Metrics Tracked** include:
-
-  - Retry counts
-  - Execution duration
-  - Device usage
-  - Failure trends
-  - **TBD**
-
-- **Dashboards** can be created for:
-
-  - QA health monitoring
-  - Flaky test heatmaps
-  - Execution time trends by project or team
-
-
+- Role-based permissions (Dev, QA, Admin)
+- Action audit logs (who triggered what)
 
 ---
+
+## ⚙️ Non-Functional Requirements
+
+### 🧹 Scalability
+
+- Support hundreds of tests concurrently
+- Use Docker/K8s for container execution
+- Executor agents must scale based on available physical/virtual devices (STF/AVD)
+
+### 💥 Fault Tolerance
+
+- Detect and recover from executor crashes
+- Retry failed tests due to infra instability
+- Maintain test state in orchestrator
+- All services must emit structured logs and metrics via OpenTelemetry
+- Include watchdog monitoring for unresponsive containers and auto-recovery
+
+### 🔐 Security
+
+- Encrypted storage for logs/results
+- Secure access to code/devices
+- Optional SSO support
+- Each test execution must run in an isolated container to prevent test data leakage
+
+### ⚡ Performance
+
+- Test trigger-to-start time < 30 sec
+- PR test results within 10 min
+- Retry delay: 45 seconds
+
+### ⚒️ Maintainability
+
+- Plugin architecture for tools
+- Minimal manual ops required
+- All services must produce traceable structured logs
+
+### ☁️ Deployment
+
+- **On-premises deployment required** (Kubernetes-based)
+- **Must not depend on cloud-based services or SaaS tools**
+
+---
+
+## 💥 Fault Tolerance & Crash Recovery
+
+### Crash Detection & Retry
+
+- Detect crashes using liveness and readiness probes
+- Mark test as crashed and log error details
+- Automatically re-queue crashed test for retry based on policy
+
+### Stateful Tracking
+
+- Maintain test state within the Execution Coordinator
+- Ensure test resumption after partial failure
+- Maintain unique run IDs to correlate retries with original executions
+
+### Resilient Logging
+
+- Use sidecar or stream-based logging to ensure no log loss
+- Logs are shipped immediately to ELK
+- Each log entry tagged with run ID and retry metadata
+
+### Watchdog Monitoring
+
+- Periodically probe executor health and responsiveness
+- Automatically kill and reschedule jobs stuck in unresponsive containers
+- Alert via Notifier Service on repeated watchdog triggers
 
 ## 🧰 Component Architecture
 
-### 🔄 Message-Driven Microservices Architecture
+### 🔄 Message-Driven Microservices Architecture with Jenkins-Centric Triggering
 
-This architecture is fully designed for **on-premises deployment**. All components communicate via local message brokers (e.g., RabbitMQ or Kafka), and no component depends on external cloud services. Infrastructure such as ELK, OpenTelemetry, and integration endpoints (e.g., Jira, Jenkins, Bitbucket) must all run within the secured internal network.
+This architecture is fully designed for **on-premises deployment**. All components communicate via a local message broker (e.g., RabbitMQ or Kafka). No component depends on external cloud services. Infrastructure such as ELK, OpenTelemetry, and integration endpoints (e.g., Jira, Jenkins, Bitbucket) must all run within the secured internal network.
 
-This system adopts a **Jenkins-centric coordination model**, where all peripheral trigger sources (such as Xray, Bitbucket, or scheduled jobs) are funneled through Jenkins as a unified execution control point. Jenkins acts as the central entry for triggering test workflows, ensuring standardized authentication, auditing, and traceability across teams.
+This system adopts a **Jenkins-centric triggering model**, where Jenkins serves as the unified control point for initiating test workflows. However, **Jenkins is not the central orchestrator of the entire system**. It only standardizes execution requests from peripheral systems like Bitbucket, Xray, or scheduled jobs.
 
 All remaining processing—including planning, execution, observability, and result reporting—is handled by a set of independently scalable microservices. These services are designed to ensure high availability, isolation of responsibilities, and robust recovery from faults.
 
-### Core Components:
+### Core Components
 
-| Component                 | Description |
-|--------------------------|-------------|
-| **Trigger Listener** | Captures test initiation requests from Bitbucket, Jenkins, Xray, or a scheduler (cron) and pushes standardized events into a message queue. It also proxies external trigger sources through Jenkins when required, acting as a centralized gateway. <br> *Example*: Detects a commit annotated with `@automation` and emits a trigger message via Jenkins webhook. |
-| **Trigger Router** | Validates and enriches the message with metadata (e.g., branch, commit, tags, environment) before routing it to the Test Planner. *Example*: Adds test suite and target device profile to the trigger event. |
-| **Test Planner** | Parses the repository and test framework to extract the test manifest based on the metadata. The `test manifest` is the formal contract between planning and execution, including test files, required devices, env vars, and timeouts. *Example*: Generates a list of `@smoke` tests from a given commit in a Behave framework. |
-| **Execution Coordinator** | Manages the lifecycle of test jobs, including scheduling from the manifest, applying retry logic, balancing across agents, tracking job state, and performing watchdog monitoring for unresponsive containers. |
-| **Executor Agent** | Stateless service that executes the test jobs in isolated Docker/K8s containers. Communicates with OpenSTF and connected test hardware. Streams structured logs and telemetry to ELK and sends results to the Result Router. |
-| **Result Router** | Collects and enriches result events (e.g., duration, retries, outcomes) and delegates them to specialized publisher microservices, each responsible for reporting to a specific external system (e.g., Xray, Bitbucket, Jenkins). Ensures delivery confirmation and fault isolation per integration. Example: **1.** The Xray Publisher updates test results in Jira **2.** The Bitbucket Publisher updates the PR status **3.** The Jenkins Publisher marks the pipeline build as success/failure, archives Allure results, and updates execution counters in the Jenkins UI |
-| **Notifier Service** | Sends alerts and summaries to Notification Channel or other endpoints based on policy thresholds. |
-| **Telemetry Collector** | Aggregates logs and performance metrics from all services and exports them to ELK using OpenTelemetry. Focuses on continuous observability and debugging.  Example: Streams real-time test duration, device CPU usage, and container health to Kibana dashboards. |                                   |
-
-                                                                                                                      
-
-#### Advantages:
-
-- Clear separation of concerns between input, planning, execution, and reporting
-- Scalable and fault-tolerant using message queues and backpressure
-- Extensible design allows future integration with platforms like GitHub Actions, MS Teams, or custom dashboards
-- Supports isolated development and monitoring of each service for easier debugging and maintenance
-
----
+| Component                 | Description                                                                                                                                                                                                                                                                                                                            |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger Listener**      | Captures test initiation requests from Bitbucket, Jenkins, Xray, or a scheduler (cron). Forwards them through Jenkins where applicable. Converts the event into a standard message and places it on the message queue. *Example*: Triggers a test run from Xray using Jenkins API and emits a queue event.                             |
+| **Trigger Router**        | Validates and enriches the message with metadata (e.g., branch, commit, tags, environment) before routing it to the Test Planner. *Example*: Adds test suite and target device profile to the trigger event.                                                                                                                           |
+| **Test Planner**          | Parses the repository and test framework to extract the test manifest based on the metadata. The `test manifest` is the formal contract between planning and execution, including test files, required devices, env vars, and timeouts. *Example*: Generates a list of `@smoke` tests from a given commit in a Behave framework.       |
+| **Execution Coordinator** | Accepts the test manifest and schedules test executions across available Executor Agents. Applies retry policies and runs watchdog monitoring to detect silent or stuck jobs. *Example*: Retries a test job after detecting a crash, rerouting it to a different executor.                                                             |
+| **Executor Agent**        | Executes test jobs in isolated environments (e.g., Docker or K8s containers). Communicates with OpenSTF and any attached test hardware. Sends logs to ELK and results to the Result Router. *Example*: Runs a test on a physical Android device and streams real-time logs.                                                            |
+| **Result Router**         | Enriches results with contextual metadata and routes them to dedicated microservices that integrate with external systems like Xray, Jenkins, or Bitbucket. Each system has its own publisher service for robustness. *Example*: The Xray Publisher updates test results in Jira, while the Bitbucket Publisher updates the PR status. |
+| **Notifier Service**      | Monitors for test state changes and policy breaches. Sends alerts to Slack, email, or webhook based on configured thresholds. *Example*: Notifies QA when flaky test count exceeds five in a suite.                                                                                                                                    |
+| **Telemetry Collector**   | Collects logs and execution metrics from all components and streams them to ELK using OpenTelemetry standards. *Example*: Exports container resource usage and retry trends to Kibana dashboards.                                                                                                                                      |
 
 ### 🔁 Example Scenario
 
@@ -268,3 +304,4 @@ feat(login): Add 2FA tests @automation @smoke @XRAY-124 @XRAY-127
 - Streams logs, retry counts, and execution time to ELK for dashboards
 
 ---
+
