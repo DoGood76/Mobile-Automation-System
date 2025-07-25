@@ -2,7 +2,7 @@
 
 ## 📌 What Are We Building?
 
-We're building a **Unified Test Trigger UI** to allow teams to manually initiate mobile automation tests via a clean, structured interface — starting with Jenkins as the first delivery vehicle.
+We're building a **Unified Test Trigger UI** to allow teams to manually initiate mobile automation tests via a clean, structured interface — starting with *Jenkins* as the first delivery vehicle.
 
 This is not just a new form. It’s the **first official mechanism** for test execution and will serve as the **execution contract** for all future trigger systems, including Bitbucket, Xray, and APIs.
 
@@ -122,13 +122,45 @@ In the initial rollout, the Jenkins UI will serve as the **primary interface** f
 
 Imagine a QA lead validating a hotfix on Friday:
 
-1. Opens the UI, clicks "Run Mobile Tests"
-2. Selects `@smoke` + `@login` tests on `release/v1.2.4`
-3. Picks Samsung & Pixel devices with Android 13+
-4. Runs a Dry Simulation – sees 12 tests across 3 devices
-5. Confirms and clicks "Trigger Job"
 
-No CLI, no YAML editing. Just clarity and control.
+1. **Open the Unified Test Trigger UI**  
+   The user clicks “Run Mobile Tests” in Jenkins or the relevant entry point.
+
+2. **Select App Source (Version Under Test)**  
+   - Chooses `release/v1.2.4` from Git branch  
+   - Jenkins builds app and attaches artifacts automatically
+
+3. **Select Test Sources** *(optional)*  
+   - Picks `main` from a separate test repo and one Artifactory test bundle
+
+4. **Choose Test Scope**  
+   - Selects `@smoke`, `@login`, and `xray-123`  
+   - Adds exclusion: `@flaky`  
+   - UI warns: “Tag Expression overrides other selectors” if user types `(@checkout or @login) and not @slow`
+
+5. **Define Device Roles**  
+   - Adds 2 roles:  
+     - `primary`: Pixel 7, OS 13, label `project:calendar`  
+     - `peer`: Galaxy S21, OS 13–14, label `region:EU`  
+   - Jenkins UI shows matching devices per role
+
+6. **Configure Execution Options**  
+   - Enables `parallel_execution`  
+   - Sets `retry_failed = 2`, `fail_fast = true`, `timeout = 30 mins`  
+   - UI shows tooltip: “Fail Fast overrides Retry”
+
+7. **Run a Dry Simulation**  
+   - Toggles “Dry Run”  
+   - Backend simulates test matrix  
+   - UI output panel shows:  
+     ✅ 12 test cases matched  
+     📱 2 primary devices × 3 peer devices  
+     🧪 72 test executions total  
+     ⚠️ Warning: 1 tag not found, 1 role had 0 device matches (if applicable)
+
+8. **Confirm and Trigger Job**  
+   - If Dry Run looks good, user disables Dry Run  
+   - Clicks “Trigger Job” to send final JSON payload
 
 ---
 
@@ -299,7 +331,7 @@ Defines the origin of the test definitions to be executed.
 
 ```json
 {
-  "test_source": {
+  "test_sources": {
     "type": "artifactory_path",
     "path": "test-bundles/v1.3.1"
   }
@@ -315,7 +347,7 @@ Defines the origin of the test definitions to be executed.
 
 ```json
 {
-  "test_source": {
+  "test_sources": {
     "type": "none"
   }
 }
@@ -540,6 +572,27 @@ Each Device Role contains one filter group:
 | Dry Run Mode                   | `simulate: true` included in root JSON                  | Server simulates all possible combinations, warns if any role has 0 matches     |
 | Execution Mode (real run)      | `simulate: false` (or omitted)                          | Server allocates devices and executes based on matrix, skipping unmatched roles |
 
+---
+### 🔖 Label Matching Rules
+
+**Labels** are used to match devices by project metadata, geographic assignment, or custom tags (e.g., `project:calendar`, `region:EU`, `lab:berlin`).
+
+**Matching Logic:**
+
+- A device must match **all** labels listed in a role’s filter.
+- Matching is **case-sensitive** and must be an **exact string match**.
+- This logic uses **AND** semantics — not OR.
+
+**Example:**
+
+```json
+"labels": ["project:calendar", "region:EU"]
+```
+
+| ✅ **Matches**          | A device labeled with both `project:calendar` **and** `region:EU`.                            |
+|-------------------------|-----------------------------------------------------------------------------------------------|
+| ❌ **Excludes**         | Devices with **only one** of the labels (e.g., just `project:calendar` or just `region:EU`).  |
+| ⚠️ **Dry Run Behavior** | Devices not matching **all specified labels** will be excluded from previews and execution.   |
 
 ---
 
@@ -560,13 +613,52 @@ Each Device Role contains one filter group:
 
 ### 5. Execution Options (Global)
 
-* Toggle: Parallel Execution
-* Retry failed tests: Toggle + Count
-* Toggle: Fail Fast
-* Timeout (in minutes)
-* Toggle + Field: Save configuration as reusable preset
+These options apply across the entire test job and affect all tests and devices.
 
-> 🔁 **Note:** Dry Run configuration is now handled in [Section 6 – Dry Run & Output Preview](#6-dry-run--output-preview).
+| **Option**             | **Type**           | **Description**                                                  |
+|------------------------|--------------------|------------------------------------------------------------------|
+| **Parallel Execution** | Boolean (toggle)   | Run tests in parallel across available devices. Default: `false`. |
+| **Retry Failed Tests** | Number (`0–3`)     | Retry each failed test-case up to N times. Default: `0`.         |
+| **Fail Fast**          | Boolean (toggle)   | Abort all test execution on first failure. Default: `false`. ⚠️ If both enabled, this takes precedence over `retry_failed`.    |
+| **Timeout**            | Number (minutes)   | Total time allowed for the job. `0` means no timeout. Default: `60`. |
+
+> 🔁 **Note:** Dry Run is handled separately in [Section 6 – Dry Run & Output Preview](#6-dry-run--output-preview).  
+> 💡 Preset saving is a future feature and excluded from MVP.
+
+---
+
+### ✅ JSON Example
+
+```json
+{
+  "execution_options": {
+    "parallel_execution": true,
+    "retry_failed": 2,
+    "fail_fast": true,
+    "timeout_minutes": 30
+  }
+}
+```
+### 🔍 Backend Behavior by Field
+
+| **Field**             | **Type** | **Valid Values**        | **If Missing**       | **If Invalid**                    |
+|-----------------------|----------|--------------------------|----------------------|-----------------------------------|
+| `parallel_execution`  | Boolean  | `true`, `false`          | Defaults to `false`  | Treated as `false`                |
+| `retry_failed`        | Number   | `0–3`                    | Defaults to `0`      | Out of range → fallback to `0`    |
+| `fail_fast`           | Boolean  | `true`, `false`          | Defaults to `false`  | Treated as `false`                |
+| `timeout_minutes`     | Number   | `0–180` (e.g., 3 hours)  | Defaults to `60`_
+
+
+> ⏱️ **Note:** Timeout applies to the entire test job. It begins at execution start and includes all devices and test cases.
+
+### ⚠️ Combined Behavior: `fail_fast` vs `retry_failed`
+
+If both options are enabled:
+
+> **Fail Fast wins.**  
+> The system **immediately stops execution** on the first failure, and **does not retry** that or any subsequent tests.
+
+This prevents conflicting expectations and simplifies orchestration logic.
 
 
 ---
@@ -734,6 +826,8 @@ This UI and interaction model defines the **canonical contract** for future trig
 ---
 
 ## 🚀 Optional Enhancements
+These features are not included in the MVP but may be considered for future iterations to improve usability, team collaboration, and test orchestration efficiency.
+
 
 * **Template Sharing:** Save/load/share full test configurations
 * **Run Again:** Re-run previous job with same config
@@ -752,5 +846,4 @@ This UI and interaction model defines the **canonical contract** for future trig
 * [ ] Errors are handled clearly (missing branches, missing APKs, no test match)
 * [ ] Dry run toggle in UI triggers simulation and returns accurate preview panel
 * [ ] Dry run returns valid preview of test/device matrix
-
-
+* [ ] JSON schema is validated before sending to Trigger Listener

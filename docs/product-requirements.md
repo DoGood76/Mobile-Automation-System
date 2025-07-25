@@ -1,4 +1,4 @@
-# 🧪 Unified Test Trigger UI – PRD
+# 🧪 Mobile-Automation-System – PRD
 
 ## TL;DR
 This PRD proposes a rich, flexible **Unified Test Trigger UI** for initiating mobile automation tests manually. Initially implemented in Jenkins, this interface will empower QA, developers, and team leads to define test scope, app versions, and execution environments — without needing CLI access or brittle scripting. This is the first official trigger in the automation ecosystem and lays the foundation for future trigger capabilities across Bitbucket, Xray, and APIs.
@@ -88,17 +88,17 @@ Example:
 }
 ```
 
-- **Option B: Jenkins Pipeline Trigger**
+- **Option 2: Jenkins Pipeline Trigger**
 
   - User triggers the test manually through a Jenkins job (UI button or API call)
   - Parameters include test suite, branch, tags, and environment
 
-- **Option C: Xray-Driven Trigger**
+- **Option 3: Xray-Driven Trigger**
 
   - From Jira/Xray, user clicks a "Run Automated Test" button
   - Test plan is used to trigger execution via API
 
-- **Option D: Scheduled Cron Trigger**
+- **Option 4: Scheduled Cron Trigger**
 
   - Tests are executed automatically based on nightly or scheduled cron jobs
 
