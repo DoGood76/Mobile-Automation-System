@@ -166,7 +166,50 @@ Imagine a QA lead validating a hotfix on Friday:
 
 ## 🧹 Core Functional Sections
 
-### 📦 1. Source / Version Under Test
+### 1. 🔗 Trigger Metadata
+
+> **Purpose:**  
+> Define the **origin**, **ownership**, and **audit context** for a test trigger.  
+> Required for all invocation sources — Jenkins, Bitbucket, API, Xray, Slack, or Cron.
+
+This metadata enables analytics, routing, observability, and post-execution updates to the initiator system. It is **always included**, regardless of test content or source strategy.
+
+---
+
+#### 📦 JSON Structure
+
+```json
+"trigger_metadata": {
+  "source": "jenkins",
+  "initiated_by": "qa.lead@company.com",
+  "requested_at": "2025-07-18T14:52:00Z",
+  "source_job_id": "Run-Mobile-Automation-#143",
+  "tracking_id": "abcd-1234-efgh-5678",
+  "priority": "high"
+}
+```
+#### 🧷 Field Reference
+
+| Field           | Type     | Required   | Description                                                                 |
+|----------------|----------|------------|-----------------------------------------------------------------------------|
+| `source`        | string   | ✅ Yes     | Origin of trigger. Valid: `jenkins`, `bitbucket`, `xray`, `api`, `slack`, `cron` |
+| `initiated_by`  | string   | ✅ Yes     | Username, email, or system that triggered the job                          |
+| `requested_at`  | datetime | ✅ Yes     | ISO 8601 timestamp of trigger initiation                                   |
+| `source_job_id` | string   | ⬜ Optional | Triggering entity ID (e.g., Jenkins job name, PR ID, Xray test plan)       |
+| `tracking_id`   | string   | ⬜ Optional | Globally unique correlation ID for cross-system logs or retries            |
+| `priority`      | string   | ⬜ Optional | Execution priority: `normal`, `high`, `urgent` (affects queue or alerting) |
+
+#### ⚙️ Behavior & Usage
+
+- Always included in the root payload as `"trigger_metadata": { ... }`.
+- Enables log correlation, alert routing, and deduplication in backend services.
+- `tracking_id` can be reused across retries or re-runs.
+- `priority` can influence job scheduling and monitoring alerts.
+- `source_job_id` links the test job back to Jenkins, Bitbucket, or Xray for UI traceability.
+
+---
+
+### 📦 2. Source / Version Under Test
 
 **🌟 Purpose:**
 Define how the app version and artifacts (APK, JAR, AAR, etc.) are linked to the test run.
@@ -262,7 +305,7 @@ The user selects one of the following **three mutually exclusive options**:
 
 ---
 
-### 🛠️ UI Behavior
+#### 🛠️ UI Behavior
 
 * One option must be selected:
   `Build from Git Branch` | `Use Existing Artifacts` | `No Build / Pre-installed`
@@ -270,7 +313,7 @@ The user selects one of the following **three mutually exclusive options**:
 
 ---
 
-### ✅ Summary Table
+#### ✅ Summary Table
 
 | Mode                         | Jenkins Builds? | Validates Artifacts? | Downloads? | App Pre-installed? | JSON Fields Included                                |
 | ---------------------------- | --------------- | -------------------- | ---------- | ------------------ | --------------------------------------------------- |
@@ -280,7 +323,7 @@ The user selects one of the following **three mutually exclusive options**:
 
 ---
 
-### ✅ Jenkins UX
+#### ✅ Jenkins UX
 
 <p align="center">
   <img src="./images/jenkins-branch-artifacts-selection.png" alt="UI mockup" width="400" />
@@ -290,7 +333,7 @@ The user selects one of the following **three mutually exclusive options**:
 
 
 ---
-### 🧪 2. Test Source
+### 🧪 3. Test Source
 
 > 📝 **Note:** This section is **optional** if the test sources are already bundled with the source artifacts in the *Source / Version Under Test* section.
 
@@ -352,7 +395,7 @@ Defines the origin of the test definitions to be executed.
   }
 }
 ```
-### 🛠️ UI Behavior
+#### 🛠️ UI Behavior
 
 * User can choose one or more test sources.
 * Test sources are grouped in a list format with ability to add/remove items.
@@ -360,14 +403,14 @@ Defines the origin of the test definitions to be executed.
 * Repository field is optional when source is same as app repository.
 
 ---
-### ✅ Jenkins UX
+#### ✅ Jenkins UX
 
 <p align="center">
   <img src="./images/jenkins-test-source-selection.png" alt="UI mockup" width="400" />
 </p>
 ---
 
-### ✅ Summary Table
+#### ✅ Summary Table
 
 | Mode                    | Source Type       | Requires Repo? | Jenkins Validates? | Can Be Multiple? | JSON Format         |
 | ----------------------- | ----------------- | -------------- | ------------------ | ---------------- | ------------------- |
@@ -377,7 +420,7 @@ Defines the origin of the test definitions to be executed.
 
 ---
 
-### 🧾 Combined JSON Output Example
+#### 🧾 Combined JSON Output Example
 
 ```json
 {
@@ -396,7 +439,7 @@ Defines the origin of the test definitions to be executed.
 ```
 
 ---
-### 3. Test Selection
+### 4. Test Selection
 
 Select the specific tests to execute from the defined sources. Users can mix and match selection methods unless a Tag Expression is used, which overrides all others.
 
@@ -476,7 +519,7 @@ Ignored if a Tag Expression is provided (which takes full control).
 ```
 ---
 
-### ⚙️ Selection Logic Priority
+#### ⚙️ Selection Logic Priority
 
 1. If a **Tag Expression** is provided → it **overrides all other test selection inputs**.
 2. If no Tag Expression is provided:
@@ -502,7 +545,7 @@ Ignored if a Tag Expression is provided (which takes full control).
 }
 ```
 ---
-### ✅ Jenkins UX
+#### ✅ Jenkins UX
 
 <p align="center">
   <img src="./images/jenkins-test-selection.png" alt="UI mockup" width="400" />
@@ -510,7 +553,7 @@ Ignored if a Tag Expression is provided (which takes full control).
 
 ---
 
-### 4. Device Selection
+### 5. Device Selection
 
 Define what types of devices are needed to run the test.  
 Each **Device Role** represents one required device in the execution matrix (e.g., `primary`, `receiver`, `peer`, etc.).
@@ -563,7 +606,7 @@ Each Device Role contains one filter group:
 
 ---
 
-### 🎯 JSON Summary by Execution Mode
+#### 🎯 JSON Summary by Execution Mode
 
 | Mode                           | Device Roles in JSON                                    | Execution Matrix Impact                                                         |
 | ------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -573,7 +616,7 @@ Each Device Role contains one filter group:
 | Execution Mode (real run)      | `simulate: false` (or omitted)                          | Server allocates devices and executes based on matrix, skipping unmatched roles |
 
 ---
-### 🔖 Label Matching Rules
+#### 🔖 Label Matching Rules
 
 **Labels** are used to match devices by project metadata, geographic assignment, or custom tags (e.g., `project:calendar`, `region:EU`, `lab:berlin`).
 
@@ -604,14 +647,14 @@ Each Device Role contains one filter group:
 - Users can **save role configurations as reusable presets** per team/project
 
 
-### ✅ Jenkins UX
+#### ✅ Jenkins UX
 
 <p align="center">
   <img src="./images/jenkins-devices-selection.png" alt="UI mockup" width="400" />
 </p>
 ---
 
-### 5. Execution Options (Global)
+### 6. Execution Options (Global)
 
 These options apply across the entire test job and affect all tests and devices.
 
@@ -622,12 +665,12 @@ These options apply across the entire test job and affect all tests and devices.
 | **Fail Fast**          | Boolean (toggle)   | Abort all test execution on first failure. Default: `false`. ⚠️ If both enabled, this takes precedence over `retry_failed`.    |
 | **Timeout**            | Number (minutes)   | Total time allowed for the job. `0` means no timeout. Default: `60`. |
 
-> 🔁 **Note:** Dry Run is handled separately in [Section 6 – Dry Run & Output Preview](#6-dry-run--output-preview).  
+> 🔁 **Note:** Dry Run is handled separately in [Section 6 – Dry Run & Output Preview](#7-dry-run--output-preview).  
 > 💡 Preset saving is a future feature and excluded from MVP.
 
 ---
 
-### ✅ JSON Example
+#### ✅ JSON Example
 
 ```json
 {
@@ -639,7 +682,7 @@ These options apply across the entire test job and affect all tests and devices.
   }
 }
 ```
-### 🔍 Backend Behavior by Field
+#### 🔍 Backend Behavior by Field
 
 | **Field**             | **Type** | **Valid Values**        | **If Missing**       | **If Invalid**                    |
 |-----------------------|----------|--------------------------|----------------------|-----------------------------------|
@@ -651,7 +694,7 @@ These options apply across the entire test job and affect all tests and devices.
 
 > ⏱️ **Note:** Timeout applies to the entire test job. It begins at execution start and includes all devices and test cases.
 
-### ⚠️ Combined Behavior: `fail_fast` vs `retry_failed`
+#### ⚠️ Combined Behavior: `fail_fast` vs `retry_failed`
 
 If both options are enabled:
 
@@ -663,11 +706,11 @@ This prevents conflicting expectations and simplifies orchestration logic.
 
 ---
 
-## 6. 🧪 Dry Run & Output Preview
+### 7. 🧪 Dry Run & Output Preview
 
 The **Dry Run** capability allows users to simulate a test run before triggering actual execution. This ensures selected tests and device filters result in a meaningful, executable matrix — reducing waste, errors, and frustration.
 
-### 🔹 Dry Run Toggle
+#### 🔹 Dry Run Toggle
 
 **Purpose:**  
 Simulate the test/device matrix before actual execution.
@@ -690,7 +733,7 @@ Simulate the test/device matrix before actual execution.
 }
 ```
 ---
-### 🛠️ UX Notes
+#### 🛠️ UX Notes
 
 - ✅ **Simulation is automatic** when the form is valid and Dry Run is selected.
 - 🚨 **Dry run mode is clearly labeled** in the job summary (confirmation screen).
@@ -700,7 +743,7 @@ Simulate the test/device matrix before actual execution.
   - Reserve devices
   - Create/persist jobs
 ---
-### 🔎 Output Preview Panel
+#### 🔎 Output Preview Panel
 
 **Purpose:**  
 Provide users with a clear and immediate summary of what their test run would look like — before actually running it.
@@ -725,13 +768,35 @@ Provide users with a clear and immediate summary of what their test run would lo
 ⚠️ 1 tag was unmatched: @nonexistent-tag
 ```
 ---
-### 🧪 Example Combined Simulation Payload
+#### 🧪 Example Combined Simulation Payload
 
 **Payload sent to `/simulate` to generate the Output Preview Panel:**
 
 ```json
 {
+  "version": "1.0",
+  "trigger_metadata": {
+    "source": "jenkins",
+    "initiated_by": "qa.lead@company.com",
+    "requested_at": "2025-07-18T14:52:00Z",
+    "source_job_id": "Run-Mobile-Automation-#143",
+    "tracking_id": "abcd-1234-efgh-5678",
+    "priority": "high"
+  },
   "simulate": true,
+  "source": {
+    "type": "build_from_branch",
+    "git_branch": "release/v1.2.4",
+    "artifact_path": "artifactory/releases/calendar-v1.2.4/",
+    "artifacts": ["calendar.apk", "test-lib.jar"]
+  },
+  "test_sources": {
+    "test_source_1": {
+      "type": "git_branch",
+      "branches": ["main"],
+      "repository": "https://example.com/test-repo.git"
+    }
+  },
   "test_selection": {
     "test_groups": ["@sanity", "@smoke"],
     "test_tags": ["@login", "xray-123"],
@@ -741,24 +806,26 @@ Provide users with a clear and immediate summary of what their test run would lo
     "primary": {
       "models": ["Pixel 7"],
       "os_versions": ["13"],
-      "capabilities": ["Camera"]
+      "capabilities": ["Camera"],
+      "labels": ["project:calendar"]
     },
     "peer": {
       "models": ["Samsung Galaxy S21"],
       "os_versions": ["13", "14"],
-      "capabilities": ["Biometric"]
+      "capabilities": ["Camera", "Biometric"],
+      "labels": ["region:EU"]
     }
   },
-  "source": {
-    "type": "build_from_branch",
-    "git_branch": "release/v1.2.4",
-    "artifact_path": "artifactory/releases/calendar-v1.2.4/",
-    "artifacts": ["calendar.apk", "test-lib.jar"]
+  "execution_options": {
+    "parallel_execution": true,
+    "retry_failed": 2,
+    "fail_fast": true,
+    "timeout_minutes": 30
   }
 }
 ```
 ---
-### ⚠️ UI Considerations – Dry Run & Simulation
+#### ⚠️ UI Considerations – Dry Run & Simulation
 
 - ❗ **No Matching Tests**  
   If no tests match the current filters, the **Preview Panel** should display with a **red border** and a clear CTA:  
