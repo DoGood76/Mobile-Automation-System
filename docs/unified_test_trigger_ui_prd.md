@@ -63,9 +63,18 @@ If we don’t standardize now, we risk:
 
 ## 📣 Call to Action
 
-- ✅ Approve scope and Jenkins-based MVP
-- 🤝 Align backend teams on trigger contract
-- 🔜 Begin UI development and backend simulation APIs
+- ✅ **Approve Phase 1 MVP Scope & Architecture**  
+  Sign off on Jenkins-triggered execution flow, core components, and schema v1.0.
+
+- 👥 **Define R&R: DevOps vs. Automation Infrastructure**  
+  Establish clear ownership of orchestration, CI pipelines, device lab, and test logic.
+
+- 🤝 **Align on Trigger Contract & Schema Ownership**  
+  Finalize JSON schema, assign producer/consumer roles, and validate in CI.
+
+- 🚀 **Initiate POC Development**  
+  Stand up trigger listener, backend stubs, and basic Jenkins UI for payload generation.
+
 
 ---
 
@@ -114,7 +123,6 @@ In the initial rollout, the Jenkins UI will serve as the **primary interface** f
 * QA Engineers
 * Developers
 * Team Leads
-* Release Engineers
 
 ---
 
@@ -402,13 +410,13 @@ Defines the origin of the test definitions to be executed.
 * Each source is labeled and validated individually.
 * Repository field is optional when source is same as app repository.
 
----
+
 #### ✅ Jenkins UX
 
 <p align="center">
   <img src="./images/jenkins-test-source-selection.png" alt="UI mockup" width="400" />
 </p>
----
+
 
 #### ✅ Summary Table
 
@@ -443,7 +451,7 @@ Defines the origin of the test definitions to be executed.
 
 Select the specific tests to execute from the defined sources. Users can mix and match selection methods unless a Tag Expression is used, which overrides all others.
 
----
+
 
 #### 🔹 Multi-select Predefined Test Groups
 
